@@ -22,6 +22,7 @@
 
 package com.pentaho.big.data.bundles.impl.shim.hive;
 
+import org.apache.thrift.transport.TTransportException;
 import org.pentaho.big.data.api.jdbc.impl.JdbcUrlImpl;
 import org.pentaho.big.data.api.shims.LegacyShimLocator;
 import org.pentaho.hadoop.shim.api.cluster.NamedCluster;
@@ -114,13 +115,23 @@ public class HiveDriver implements Driver {
     } catch ( Exception ex ) {
       Throwable cause = ex;
       do {
+        if ( cause instanceof SQLException){
+            getParentLogger().info( "SQL Exception Found: " );
+            getParentLogger().info( "cause.getMessage " +  cause.getMessage() );
+            getParentLogger().info( "cause.toString " +  cause.toString() );
+            getParentLogger().info( "cause.getLocalizedMessage " +  cause.getLocalizedMessage() );
+            getParentLogger().info( "cause.getSQLState " +  ( (SQLException) cause ).getSQLState() );
+        }
         // BACKLOG-6547
         if ( cause instanceof SQLException
-          && SQL_STATE_NOT_SUPPORTED.equals( ( (SQLException) cause ).getSQLState() ) ) {
+          && ( SQL_STATE_NOT_SUPPORTED.equals( ( (SQLException) cause ).getSQLState() )
+          || ( (SQLException) cause ).getCause() instanceof org.apache.thrift.transport.TTransportException )) {
           // this means that either driver can't be obtained or does not support connect().
           // In both cases signal to DriverManager we can't process the URL
           return null;
         }
+
+
         cause = cause.getCause();
       } while ( cause != null );
 
